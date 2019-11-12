@@ -19,22 +19,25 @@ import {
   ProfileButtonText,
 } from './styles';
 
+const propTypes = {
+  navigation: PropTypes.shape({
+    navigate: PropTypes.func,
+  }).isRequired,
+};
+
 export default class Main extends Component {
-  static navigationOptions = {
+  static navigationOptions = () => ({
     title: 'Usuários',
-  };
+  });
 
-  static propTypes = {
-    navigation: PropTypes.shape({
-      navigate: PropTypes.func,
-    }).isRequired,
-  };
-
-  state = {
-    newUser: '',
-    users: [],
-    loading: false,
-  };
+  constructor(props) {
+    super(props);
+    this.state = {
+      newUser: '',
+      users: [],
+      loading: false,
+    };
+  }
 
   async componentDidMount() {
     const users = await AsyncStorage.getItem('users');
@@ -121,3 +124,5 @@ export default class Main extends Component {
     );
   }
 }
+
+Main.propTypes = propTypes;

@@ -14,36 +14,78 @@ import {
   Info,
   Title,
   Author,
+  Loading,
 } from './styles';
+
+const propTypes = {
+  navigation: PropTypes.shape({
+    getParam: PropTypes.func,
+    navigate: PropTypes.func,
+  }).isRequired,
+};
 
 export default class User extends Component {
   static navigationOptions = ({ navigation }) => ({
     title: navigation.getParam('user').name,
   });
 
-  static propTypes = {
-    navigation: PropTypes.shape({
-      getParam: PropTypes.func,
-    }).isRequired,
-  };
-
-  state = {
-    stars: [],
-  };
+  constructor(props) {
+    super(props);
+    this.state = {
+      stars: [],
+      loading: true,
+      page: 1,
+      refreshing: false,
+    };
+  }
 
   async componentDidMount() {
+    this.loadStarredRepositories();
+  }
+
+  loadStarredRepositories = async () => {
     const { navigation } = this.props;
     const user = navigation.getParam('user');
-    const response = await api.get(`/users/${user.login}/starred`);
+
+    const { stars, page } = this.state;
+
+    const response = await api.get(`/users/${user.login}/starred`, {
+      params: { page, size: 5 },
+    });
 
     this.setState({
-      stars: response.data,
+      stars: page >= 2 ? [...stars, ...response.data] : response.data,
+      loading: false,
+      page,
     });
-  }
+  };
+
+  loadMore = async () => {
+    const { page } = this.state;
+    this.setState({
+      page: page + 1,
+      loading: true,
+    });
+    this.loadStarredRepositories();
+  };
+
+  refreshList = async () => {
+    this.setState({
+      page: 1,
+      loading: true,
+      refreshing: true,
+    });
+    this.loadStarredRepositories();
+  };
+
+  handleNavigate = repository => {
+    const { navigation } = this.props;
+    navigation.navigate('Repository', { repository });
+  };
 
   render() {
     const { navigation } = this.props;
-    const { stars } = this.state;
+    const { stars, loading, refreshing } = this.state;
     const user = navigation.getParam('user');
 
     return (
@@ -53,20 +95,31 @@ export default class User extends Component {
           <Name>{user.name}</Name>
           <Bio>{user.bio}</Bio>
         </Header>
-        <Stars
-          data={stars}
-          keyExtractor={star => String(star.id)}
-          renderItem={({ item }) => (
-            <Starred>
-              <OwnerAvatar source={{ uri: item.owner.avatar_url }} />
-              <Info>
-                <Title>{item.name}</Title>
-                <Author>{item.owner.login}</Author>
-              </Info>
-            </Starred>
-          )}
-        />
+
+        {loading ? (
+          <Loading />
+        ) : (
+          <Stars
+            data={stars}
+            keyExtractor={star => String(star.id)}
+            onEndReachedThreshold={0.2}
+            onEndReached={this.loadMore}
+            onRefresh={this.refreshList}
+            refreshing={refreshing}
+            renderItem={({ item }) => (
+              <Starred onPress={() => this.handleNavigate(item)}>
+                <OwnerAvatar source={{ uri: item.owner.avatar_url }} />
+                <Info>
+                  <Title>{item.name}</Title>
+                  <Author>{item.owner.login}</Author>
+                </Info>
+              </Starred>
+            )}
+          />
+        )}
       </Container>
     );
   }
 }
+
+User.propTypes = propTypes;
