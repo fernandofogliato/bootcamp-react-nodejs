@@ -18,7 +18,6 @@ export default class Repository extends Component {
   constructor(props) {
     super(props);
     this.repository = props.navigation.getParam('repository');
-    this.isLoading = false;
   }
 
   renderLoadingView = () => {
